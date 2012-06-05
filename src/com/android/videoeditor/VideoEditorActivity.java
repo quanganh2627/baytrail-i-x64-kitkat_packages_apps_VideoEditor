@@ -1469,6 +1469,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             mExportProgressDialog = null;
             mExportProgress = 0;
         }
+        invalidateOptionsMenu();
     }
 
     @Override
