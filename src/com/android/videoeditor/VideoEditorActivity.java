@@ -1453,6 +1453,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             mExportProgressDialog.dismiss();
             mExportProgressDialog = null;
         }
+        invalidateOptionsMenu();
     }
 
     @Override
