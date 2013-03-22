@@ -960,6 +960,11 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
 
             case R.id.editor_prev: {
                 if (mProject != null && mPreviewThread != null) {
+                    if (mPreviewThread.isStopping()) {
+                        // skip prev click when preview thread is in stopping status
+                        break;
+                    }
+
                     final boolean restartPreview;
                     if (mPreviewThread.isPlaying()) {
                         mPreviewThread.stopPreviewPlayback();
@@ -2129,6 +2134,13 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
          */
         private boolean isStopped() {
             return mPreviewState == PREVIEW_STATE_STOPPED;
+        }
+
+        /**
+         * @return true if the preview is stopping
+         */
+        private boolean isStopping() {
+            return mPreviewState == PREVIEW_STATE_STOPPING;
         }
 
         @Override
