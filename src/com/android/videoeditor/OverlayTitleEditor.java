@@ -106,7 +106,11 @@ public class OverlayTitleEditor extends NoSearchActivity {
         if (attributes != null) {
             // The media item already has a title overlay. Fill in the contents in the input fields
             // and let user edit them.
-            mOverlayType = MovieOverlay.getType(attributes);
+            if (savedInstanceState == null) {
+                mOverlayType = MovieOverlay.getType(attributes);
+            } else {
+                mOverlayType = savedInstanceState.getInt(OVERLAY_KEY_TYPE);
+            }
             mTitleView.setText(MovieOverlay.getTitle(attributes));
             mSubtitleView.setText(MovieOverlay.getSubtitle(attributes));
         } else {
