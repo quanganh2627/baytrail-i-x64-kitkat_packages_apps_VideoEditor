@@ -50,6 +50,9 @@ public class OverlayTitleEditor extends NoSearchActivity {
     private Bitmap mOverlayBitmap;
     private int mPreviewWidth, mPreviewHeight;
 
+    // The key for save instance state
+    private static final String OVERLAY_KEY_TYPE = "type";
+
     private final TextWatcher mTextWatcher = new TextWatcher() {
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -107,10 +110,22 @@ public class OverlayTitleEditor extends NoSearchActivity {
             mTitleView.setText(MovieOverlay.getTitle(attributes));
             mSubtitleView.setText(MovieOverlay.getSubtitle(attributes));
         } else {
-            // Default overlay type that puts title at the bottom of the media item.
-            mOverlayType = MovieOverlay.OVERLAY_TYPE_BOTTOM_1;
+            if (savedInstanceState != null) {
+                // If overlay type has been saved, get it to update preview image.
+                mOverlayType = savedInstanceState.getInt(OVERLAY_KEY_TYPE);
+            } else {
+                // Default overlay type that puts title at the bottom of the media item.
+                mOverlayType = MovieOverlay.OVERLAY_TYPE_BOTTOM_1;
+            }
         }
         updatePreviewImage();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+
+        savedInstanceState.putInt(OVERLAY_KEY_TYPE, mOverlayType);
     }
 
     private void launchOverlayTitleTemplatePicker() {
