@@ -530,7 +530,8 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
         }
         menu.findItem(R.id.menu_item_change_aspect_ratio).setVisible(enableMenu &&
                 mProject.hasMultipleAspectRatios());
-        menu.findItem(R.id.menu_item_edit_project_name).setVisible(enableMenu);
+        // project name should be editable as long as project exists.
+        menu.findItem(R.id.menu_item_edit_project_name).setVisible(haveProject);
 
         menu.findItem(R.id.menu_item_export_movie).setVisible(enableMenu && haveMediaItems);
         menu.findItem(R.id.menu_item_delete_project).setVisible(enableMenu);
