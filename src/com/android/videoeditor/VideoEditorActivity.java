@@ -1038,12 +1038,14 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             case REQUEST_CODE_CAPTURE_IMAGE: {
                 String[] proj = {MediaStore.Images.Media.DATA};
                 Cursor actualImageCursor = managedQuery(mCaptureMediaUri, proj, null, null, null);
-                int actualImageColumnIndex = actualImageCursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                actualImageCursor.moveToFirst();
-                String imgPath = actualImageCursor.getString(actualImageColumnIndex);
-                File file = new File(imgPath);
-                Uri fileUri = Uri.fromFile(file);
-                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri));
+                if (actualImageCursor != null) {
+                    int actualImageColumnIndex = actualImageCursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                    actualImageCursor.moveToFirst();
+                    String imgPath = actualImageCursor.getString(actualImageColumnIndex);
+                    File file = new File(imgPath);
+                    Uri fileUri = Uri.fromFile(file);
+                    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri));
+                }
                 if (mProject != null) {
                     ApiService.addMediaItemImageUri(this, mProjectPath,
                             ApiService.generateId(), mInsertMediaItemAfterMediaItemId,
