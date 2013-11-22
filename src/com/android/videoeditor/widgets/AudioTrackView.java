@@ -288,8 +288,6 @@ public class AudioTrackView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (((View)getParent()).getWidth() < mScreenWidth)
-            return;
 
         if (mWaveformData == null) {
             if (mProgress >= 0) {
