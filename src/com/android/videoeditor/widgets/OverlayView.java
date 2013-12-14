@@ -129,7 +129,6 @@ public class OverlayView extends ImageView {
             }
 
             case STATE_OVERLAY: {
-                invalidate();
                 setBackgroundResource(R.drawable.timeline_item_selector);
                 setImageDrawable(null);
                 break;
