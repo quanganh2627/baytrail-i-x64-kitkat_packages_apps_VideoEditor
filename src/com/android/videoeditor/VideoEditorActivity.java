@@ -23,6 +23,7 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.text.SimpleDateFormat;
+import java.io.File;
 
 import android.app.ActionBar;
 import android.app.AlertDialog;
@@ -65,6 +66,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.database.Cursor;
 
 import com.android.videoeditor.service.ApiService;
 import com.android.videoeditor.service.MovieMediaItem;
@@ -136,6 +138,10 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
 
     // Threshold in width dip for showing title in action bar.
     private static final int SHOW_TITLE_THRESHOLD_WIDTH_DIP = 1000;
+
+    // To store the export progress when the activity is destroyed
+    private static final String EXPORT_PROGRESS  = "export_progress";
+    private int mExportProgress;
 
     private final TimelineRelativeLayout.LayoutCallback mLayoutCallback =
         new TimelineRelativeLayout.LayoutCallback() {
@@ -390,9 +396,11 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             mRestartPreview = savedInstanceState.getBoolean(STATE_PLAYING);
             mCaptureMediaUri = savedInstanceState.getParcelable(STATE_CAPTURE_URI);
             mMediaLayoutSelectedPos = savedInstanceState.getInt(STATE_SELECTED_POS_ID, -1);
+            mExportProgress = savedInstanceState.getInt(EXPORT_PROGRESS);
         } else {
             mRestartPreview = false;
             mMediaLayoutSelectedPos = -1;
+            mExportProgress = 0;
         }
 
         // Compute the activity width
@@ -490,6 +498,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
         outState.putBoolean(STATE_PLAYING, isPreviewPlaying() || mRestartPreview);
         outState.putParcelable(STATE_CAPTURE_URI, mCaptureMediaUri);
         outState.putInt(STATE_SELECTED_POS_ID, mMediaLayout.getSelectedViewPos());
+        outState.putInt(EXPORT_PROGRESS,mExportProgress);
     }
 
     @Override
@@ -509,9 +518,6 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
         menu.findItem(R.id.menu_item_import_image).setVisible(haveProject);
         menu.findItem(R.id.menu_item_import_audio).setVisible(haveProject &&
                 mProject.getAudioTracks().size() == 0 && haveMediaItems);
-        menu.findItem(R.id.menu_item_change_aspect_ratio).setVisible(haveProject &&
-                mProject.hasMultipleAspectRatios());
-        menu.findItem(R.id.menu_item_edit_project_name).setVisible(haveProject);
 
         // Check if there is an operation pending or preview is on.
         boolean enableMenu = haveProject;
@@ -522,6 +528,10 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
                 enableMenu = !ApiService.isProjectBeingEdited(mProjectPath);
             }
         }
+        menu.findItem(R.id.menu_item_change_aspect_ratio).setVisible(enableMenu &&
+                mProject.hasMultipleAspectRatios());
+        // project name should be editable as long as project exists.
+        menu.findItem(R.id.menu_item_edit_project_name).setVisible(haveProject);
 
         menu.findItem(R.id.menu_item_export_movie).setVisible(enableMenu && haveMediaItems);
         menu.findItem(R.id.menu_item_delete_project).setVisible(enableMenu);
@@ -631,6 +641,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
 
             case R.id.menu_item_export_movie: {
                 // Present the user with a dialog to choose export options
+                mExportProgress = 0;
                 showDialog(DIALOG_EXPORT_OPTIONS_ID);
                 return true;
             }
@@ -947,6 +958,11 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
 
             case R.id.editor_prev: {
                 if (mProject != null && mPreviewThread != null) {
+                    if (mPreviewThread.isStopping()) {
+                        // skip prev click when preview thread is in stopping status
+                        break;
+                    }
+
                     final boolean restartPreview;
                     if (mPreviewThread.isPlaying()) {
                         mPreviewThread.stopPreviewPlayback();
@@ -1015,6 +1031,16 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             }
 
             case REQUEST_CODE_CAPTURE_IMAGE: {
+                String[] proj = {MediaStore.Images.Media.DATA};
+                Cursor actualImageCursor = managedQuery(mCaptureMediaUri, proj, null, null, null);
+                if (actualImageCursor != null) {
+                    int actualImageColumnIndex = actualImageCursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                    actualImageCursor.moveToFirst();
+                    String imgPath = actualImageCursor.getString(actualImageColumnIndex);
+                    File file = new File(imgPath);
+                    Uri fileUri = Uri.fromFile(file);
+                    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri));
+                }
                 if (mProject != null) {
                     ApiService.addMediaItemImageUri(this, mProjectPath,
                             ApiService.generateId(), mInsertMediaItemAfterMediaItemId,
@@ -1438,6 +1464,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
     @Override
     protected void onExportProgress(int progress) {
         if (mExportProgressDialog != null) {
+            mExportProgress = progress;
             mExportProgressDialog.setProgress(progress);
         }
     }
@@ -1447,7 +1474,9 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
         if (mExportProgressDialog != null) {
             mExportProgressDialog.dismiss();
             mExportProgressDialog = null;
+            mExportProgress = 0;
         }
+        invalidateOptionsMenu();
     }
 
     @Override
@@ -1654,11 +1683,15 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
         mExportProgressDialog.setCanceledOnTouchOutside(false);
         mExportProgressDialog.show();
         mExportProgressDialog.setProgressNumberFormat("");
+        if (mExportProgress >= 0 && mExportProgress <= 100) {
+            mExportProgressDialog.setProgress(mExportProgress);
+        }
     }
 
     private void cancelExport() {
         ApiService.cancelExportVideoEditor(VideoEditorActivity.this, mProjectPath,
                 mPendingExportFilename);
+        mExportProgress = 0;
         mPendingExportFilename = null;
         mExportProgressDialog = null;
     }
@@ -1970,6 +2003,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             mAudioTrackLayout.setPlaybackInProgress(true);
 
             mPreviewState = PREVIEW_STATE_STARTING;
+            invalidateOptionsMenu();
 
             // Keep the screen on during the preview.
             VideoEditorActivity.this.getWindow().addFlags(
@@ -2089,7 +2123,7 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             mMediaLayout.setPlaybackInProgress(false);
             mAudioTrackLayout.setPlaybackInProgress(false);
             mOverlayLayout.setPlaybackInProgress(false);
-
+            invalidateOptionsMenu();
             // Do not keep the screen on if there is no preview in progress.
             VideoEditorActivity.this.getWindow().clearFlags(
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -2108,6 +2142,13 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
          */
         private boolean isStopped() {
             return mPreviewState == PREVIEW_STATE_STOPPED;
+        }
+
+        /**
+         * @return true if the preview is stopping
+         */
+        private boolean isStopping() {
+            return mPreviewState == PREVIEW_STATE_STOPPING;
         }
 
         @Override
