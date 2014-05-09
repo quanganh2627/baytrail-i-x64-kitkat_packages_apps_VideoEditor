@@ -548,9 +548,9 @@ public class VideoEditorActivity extends VideoEditorBaseActivity
             case android.R.id.home: {
                 // Returns to project picker if user clicks on the app icon in the action bar.
                 final Intent intent = new Intent(this, ProjectsActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
-                finish();
                 return true;
             }
 
